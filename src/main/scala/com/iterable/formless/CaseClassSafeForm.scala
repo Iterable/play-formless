@@ -1,15 +1,15 @@
 package com.iterable.formless
 
 import shapeless.labelled.{FieldType, field}
-import shapeless.{::, HList, HNil, LabelledGeneric, Poly}
+import shapeless.{::, HList, HNil, LabelledGeneric, Poly, RecordArgs}
 import shapeless.ops.hlist.{Align, RemoveAll, Union}
 
-private[formless] class CaseClassSafeForm[T] {
+private[formless] class CaseClassSafeForm[T] extends RecordArgs {
 
   /**
     * @param mappings a record that specifies a mapping for each field
     */
-  def withMappings[L <: HList, M <: HList, MO <: HList](mappings: M)
+  def withMappingsRecord[L <: HList, M <: HList, MO <: HList](mappings: M)
   (implicit
     gen: LabelledGeneric.Aux[T, L],
     mkMapping: MkMapping.Aux[M, MO],
@@ -30,27 +30,28 @@ private[formless] class CaseClassSafeForm[T] {
   ): SafeForm[HFLO, T] = {
     // TODO: Can we do withDefaultsAndMappings(defaults, HNil) ?
     val mapped = mappedL.apply
-    withMappings(mapped)
+    withMappingsRecord(mapped)
   }
 
-  def withDefaultsAndMappings[L <: HList, M <: HList, MO <: HList, X, R <: HList, HF <: Poly, HFR <: HList, MHFR <: HList, MHFRO <: HList]
-  (defaults: HF, mappings: M)
-  (implicit
-    gen: LabelledGeneric.Aux[T, L],           // L: K ->> V
+  def withDefaultsAndMappings[HF <: Poly](defaults: HF) = new RecordArgs {
+    def applyRecord[L <: HList, M <: HList, MO <: HList, X, R <: HList, HFR <: HList, MHFR <: HList, MHFRO <: HList](mappings: M)
+    (implicit
+      gen: LabelledGeneric.Aux[T, L],           // L: K ->> V
 
-    mkMapping: MkMapping.Aux[M, MO],          // M: K ->> Mapping[V], MO: K ->> V
-    removeAll: RemoveAll.Aux[L, MO, (X, R)],  // R: K ->> V
-    mappedR: MapValuesNull.Aux[HF, R, HFR],   // HFR: K ->> Mapping[V]
+      mkMapping: MkMapping.Aux[M, MO],          // M: K ->> Mapping[V], MO: K ->> V
+      removeAll: RemoveAll.Aux[L, MO, (X, R)],  // R: K ->> V
+      mappedR: MapValuesNull.Aux[HF, R, HFR],   // HFR: K ->> Mapping[V]
 
-    union: Union.Aux[M, HFR, MHFR],           // MHFR: K ->> Mapping[V]
+      union: Union.Aux[M, HFR, MHFR],           // MHFR: K ->> Mapping[V]
 
-    mkUnionMapping: MkMapping.Aux[MHFR, MHFRO], // MHFRO: K ->> V
-    align: Align[MHFRO, L],
-    align2: Align[L, MHFRO]
-  ): SafeForm[MHFRO, T] = {
-    val mapped = mappedR.apply
-    val unioned = union.apply(mappings, mapped)
-    withMappings(unioned)
+      mkUnionMapping: MkMapping.Aux[MHFR, MHFRO], // MHFRO: K ->> V
+      align: Align[MHFRO, L],
+      align2: Align[L, MHFRO]
+    ): SafeForm[MHFRO, T] = {
+      val mapped = mappedR.apply
+      val unioned = union.apply(mappings, mapped)
+      withMappingsRecord(unioned)
+    }
   }
 
 }

@@ -44,14 +44,14 @@ object Main {
   }
 
   def two(): Unit = {
-    val form = SafeForm.forCaseClass[Login].withMappings(record)
+    val form = SafeForm.forCaseClass[Login].withMappings(username = nonEmptyText, password = nonEmptyText)
 
     form('username)
     //form('username)
     println(form.bindFromRequest(request))
   }
 
-  val safeForm = SafeForm.forCaseClass[Login].withMappings(record)
+  val safeForm = SafeForm.forCaseClass[Login].withMappingsRecord(record)
 
   def three(): Unit = {
     val newSafeForm = safeForm.bindFromRequest(request)
@@ -64,8 +64,12 @@ object Main {
   }
 
   def defaults() = {
-    val safeForm = SafeForm.forCaseClass[Login].withDefaultsAndMappings(DefaultsWithNonEmptyText, 'password ->> text :: HNil)
+    val safeForm = SafeForm.forCaseClass[Login].withDefaultsAndMappings(DefaultsWithNonEmptyText)(password = text)
     println(safeForm.bindFromRequest(Map("username" -> Seq(""), "password" -> Seq("pw"))))
+
+    val safeForm2 = SafeForm.forCaseClass[Login].withDefaultsAndMappings(DefaultsWithNonEmptyText).applyRecord('password ->> text :: HNil)
+    println(safeForm.bindFromRequest(Map("username" -> Seq(""), "password" -> Seq("pw"))))
+
   }
 
   def refinedGood(): Unit = {
