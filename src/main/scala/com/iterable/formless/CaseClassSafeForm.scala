@@ -1,8 +1,8 @@
 package com.iterable.formless
 
+import shapeless.labelled.{FieldType, field}
 import shapeless.{::, HList, HNil, LabelledGeneric, Poly}
 import shapeless.ops.hlist.{Align, RemoveAll, Union}
-import shapeless.ops.record.MapValues
 
 private[formless] class CaseClassSafeForm[T] {
 
@@ -23,15 +23,13 @@ private[formless] class CaseClassSafeForm[T] {
   def withDefaults[L <: HList, HF <: Poly, HFL <: HList, HFLO <: HList](defaults: HF)
   (implicit
     gen: LabelledGeneric.Aux[T, L],      // L: K ->> V
-    nullMapper: NullMapper[L],
-    mappedL: MapValues.Aux[HF, L, HFL],  // HFL: K ->> Mapping[V]
+    mappedL: MapValuesNull.Aux[HF, L, HFL],  // HFL: K ->> Mapping[V]
     mkMapping: MkMapping.Aux[HFL, HFLO], // HFLO: K ->> V
     align: Align[HFLO, L],
     align2: Align[L, HFLO]
   ): SafeForm[HFLO, T] = {
     // TODO: Can we do withDefaultsAndMappings(defaults, HNil) ?
-    val l = nullMapper.apply
-    val mapped = mappedL.apply(l)
+    val mapped = mappedL.apply
     withMappings(mapped)
   }
 
@@ -42,8 +40,7 @@ private[formless] class CaseClassSafeForm[T] {
 
     mkMapping: MkMapping.Aux[M, MO],          // M: K ->> Mapping[V], MO: K ->> V
     removeAll: RemoveAll.Aux[L, MO, (X, R)],  // R: K ->> V
-    nullMapper: NullMapper[R],
-    mappedR: MapValues.Aux[HF, R, HFR],       // HFR: K ->> Mapping[V]
+    mappedR: MapValuesNull.Aux[HF, R, HFR],   // HFR: K ->> Mapping[V]
 
     union: Union.Aux[M, HFR, MHFR],           // MHFR: K ->> Mapping[V]
 
@@ -51,8 +48,7 @@ private[formless] class CaseClassSafeForm[T] {
     align: Align[MHFRO, L],
     align2: Align[L, MHFRO]
   ): SafeForm[MHFRO, T] = {
-    val r = nullMapper.apply
-    val mapped = mappedR.apply(r)
+    val mapped = mappedR.apply
     val unioned = union.apply(mappings, mapped)
     withMappings(unioned)
   }
@@ -60,16 +56,28 @@ private[formless] class CaseClassSafeForm[T] {
 }
 
 /**
- * Type class supporting creating a HList of type L filled with nulls.
+ * Variant of MapValues that doesn't require any values. Instead HF is assumed to rely on the
+ * type only.
  */
-trait NullMapper[L <: HList] { def apply: L }
+trait MapValuesNull[HF, L <: HList] extends Serializable { type Out <: HList; def apply: Out }
 
-object NullMapper {
-  implicit val hnilNullMapper: NullMapper[HNil] = new NullMapper[HNil] { def apply = HNil }
+object MapValuesNull {
+  def apply[HF, L <: HList](implicit mapValues: MapValuesNull[HF, L]): Aux[HF, L, mapValues.Out] = mapValues
 
-  implicit def hlistNullMapper[H, T <: HList]
-  (implicit mct : NullMapper[T]): NullMapper[H :: T] =
-      new NullMapper[H :: T] {
-        def apply = null.asInstanceOf[H] :: mct.apply
-      }
+  type Aux[HF, L <: HList, Out0 <: HList] = MapValuesNull[HF, L] { type Out = Out0 }
+
+  implicit def hnilMapValues[HF, L <: HNil]: Aux[HF, L, HNil] =
+    new MapValuesNull[HF, L] {
+      type Out = HNil
+      def apply = HNil
+    }
+
+  implicit def hconsMapValues[HF, K, V, T <: HList](implicit
+    hc: shapeless.poly.Case1[HF, V],
+    mapValuesTail: MapValuesNull[HF, T]
+  ): Aux[HF, FieldType[K, V] :: T, FieldType[K, hc.Result] :: mapValuesTail.Out] =
+    new MapValuesNull[HF, FieldType[K, V] :: T] {
+      type Out = FieldType[K, hc.Result] :: mapValuesTail.Out
+      def apply = field[K](hc(null.asInstanceOf[V])) :: mapValuesTail.apply
+    }
 }
