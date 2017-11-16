@@ -17,7 +17,7 @@ object MkMapping {
 
   type Aux[T, Out0] = MkMapping[T] { type Out = Out0 }
 
-  def get[L <: HList](l: L)(implicit mapper: MkMapping[L]): Mapping[mapper.Out] = mapper.apply(l)
+  def get[T](t: T)(implicit mapper: MkMapping[T]): Mapping[mapper.Out] = mapper(t)
 
   /**
     * Instance for mappings
@@ -51,17 +51,10 @@ object MkMapping {
     * Instances for HLists (both ordinary HLists and records, by the kv instances above)
     */
 
-  // Note there's no instance for HNil
-
-  implicit def hsingleMkMapping[T, TO](implicit
-    tMkMapping: MkMapping.Aux[T, TO]
-  ): Aux[T :: HNil, TO :: HNil] = {
-    new MkMapping[T :: HNil] {
-      override type Out = TO :: HNil
-
-      override def apply(l: T :: HNil): Mapping[TO :: HNil] = {
-        tMkMapping.apply(l.head).transform(to => to :: HNil, l => l.head)
-      }
+  implicit def hnilMkMapping: Aux[HNil, HNil] = {
+    new MkMapping[HNil] {
+      type Out = HNil
+      def apply(hnil: HNil): Mapping[HNil] = HNilMapping()
     }
   }
 
@@ -70,12 +63,12 @@ object MkMapping {
     tMkMapping: MkMapping.Aux[T, TO]
   ): Aux[H :: T, HO :: TO] = {
     new MkMapping[H :: T] {
-      override type Out = HO :: TO
+      type Out = HO :: TO
 
-      override def apply(t: H :: T): Mapping[HO :: TO] = {
+      def apply(t: H :: T): Mapping[HO :: TO] = {
         val hmapping = hMkMapping.apply(t.head)
         val lmapping = tMkMapping.apply(t.tail)
-        new ConsMapping(hmapping, lmapping)
+        HConsMapping.create(hmapping, lmapping)
       }
     }
   }
@@ -90,13 +83,12 @@ object MkMapping {
     align2: Align[L, RO]
   ): Aux[R, T] = {
     new MkMapping[R] {
-      override type Out = T
+      type Out = T
 
-      override def apply(r: R): Mapping[T] = {
+      def apply(r: R): Mapping[T] = {
         mkMapping.apply(r).transform(ro => gen.from(align.apply(ro)), t => align2(gen.to(t)))
       }
     }
   }
 
 }
-
