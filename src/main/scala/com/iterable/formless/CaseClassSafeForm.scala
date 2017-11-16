@@ -29,6 +29,7 @@ private[formless] class CaseClassSafeForm[T] {
     align: Align[HFLO, L],
     align2: Align[L, HFLO]
   ): SafeForm[HFLO, T] = {
+    // TODO: Can we do withDefaultsAndMappings(defaults, HNil) ?
     val l = nullMapper.apply
     val mapped = mappedL.apply(l)
     val mapping = mkMapping.apply(mapped)
