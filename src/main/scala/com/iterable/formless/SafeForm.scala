@@ -4,8 +4,11 @@ import play.api.data.{Field, Form, FormError, Mapping}
 import shapeless.{HList, LabelledGeneric, Witness}
 import shapeless.ops.hlist.Align
 import shapeless.ops.record.Selector
+import shapeless.tag.@@
 
-case class SafeForm[RO <: HList, T] private(form: Form[T]) {
+import scala.language.dynamics
+
+case class SafeForm[RO <: HList, T] private(form: Form[T]) extends Dynamic {
 
   type Repr = SafeForm[RO, T]
 
@@ -19,6 +22,8 @@ case class SafeForm[RO <: HList, T] private(form: Form[T]) {
     val field = k.value.name
     form.apply(field)
   }
+
+  def selectDynamic(key: String)(implicit selector: Selector[RO, Symbol @@ key.type]) = form.apply(key)
 
   def bindFromRequest(data: Map[String, Seq[String]]): Repr = {
     val newForm = form.bindFromRequest(data)

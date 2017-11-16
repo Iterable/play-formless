@@ -47,7 +47,9 @@ object Main {
     val form = SafeForm.forCaseClass[Login].withMappings(username = nonEmptyText, password = nonEmptyText)
 
     form('username)
-    //form('username)
+
+    form.username
+    
     println(form.bindFromRequest(request))
   }
 
