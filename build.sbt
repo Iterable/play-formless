@@ -8,3 +8,8 @@ libraryDependencies ++= Seq(
   "com.chuusai" %% "shapeless" % "2.3.2",
   "eu.timepit" %% "refined" % "0.8.4"
 )
+
+scalacOptions ++= Seq(
+  "-feature",
+  "-language:reflectiveCalls"
+)
