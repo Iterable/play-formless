@@ -17,7 +17,7 @@ private[formless] class CaseClassSafeForm[T] extends RecordArgs {
     align2: Align[L, MO]
   ): SafeForm[MO, T] = {
     val premapping = mkMapping.apply(mappings)
-    SafeForm.apply(premapping, Map(), Seq(), None)
+    SafeForm(premapping, Map(), Seq(), None)
   }
 
   def withDefaults[L <: HList, HF <: Poly, HFL <: HList, HFLO <: HList](defaults: HF)
@@ -28,9 +28,7 @@ private[formless] class CaseClassSafeForm[T] extends RecordArgs {
     align: Align[HFLO, L],
     align2: Align[L, HFLO]
   ): SafeForm[HFLO, T] = {
-    // TODO: Can we do withDefaultsAndMappings(defaults, HNil) ?
-    val mapped = mappedL.apply
-    withMappingsRecord(mapped)
+    withDefaultsAndMappings(defaults)()
   }
 
   def withDefaultsAndMappings[HF <: Poly](defaults: HF) = new RecordArgs {
@@ -63,6 +61,7 @@ private[formless] class CaseClassSafeForm[T] extends RecordArgs {
 trait MapValuesNull[HF, L <: HList] extends Serializable { type Out <: HList; def apply: Out }
 
 object MapValuesNull {
+
   def apply[HF, L <: HList](implicit mapValues: MapValuesNull[HF, L]): Aux[HF, L, mapValues.Out] = mapValues
 
   type Aux[HF, L <: HList, Out0 <: HList] = MapValuesNull[HF, L] { type Out = Out0 }
@@ -81,4 +80,5 @@ object MapValuesNull {
       type Out = FieldType[K, hc.Result] :: mapValuesTail.Out
       def apply = field[K](hc(null.asInstanceOf[V])) :: mapValuesTail.apply
     }
+
 }
