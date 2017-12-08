@@ -14,7 +14,7 @@ object Main {
 
   case class Login(username: String, password: String)
 
-  case class CreateAccount(
+  case class Account(
     name: String Refined NonEmpty,
     numUsers: Int Refined Positive,
     paid: Boolean,
@@ -49,7 +49,7 @@ object Main {
     form('username)
 
     form.username
-    
+
     println(form.bindFromRequest(request))
   }
 
@@ -75,7 +75,7 @@ object Main {
   }
 
   def refinedGood(): Unit = {
-    val safeForm = SafeForm.forCaseClass[CreateAccount].withDefaults(DefaultsWithRefined)
+    val safeForm = SafeForm.forCaseClass[Account].withDefaults(DefaultsWithRefined)
     val values = Map(
       "name" -> Seq("foo"),
       "numUsers" -> Seq("100"),
@@ -87,7 +87,7 @@ object Main {
   }
 
   def refinedBad(): Unit = {
-    val safeForm = SafeForm.forCaseClass[CreateAccount].withDefaults(DefaultsWithRefined)
+    val safeForm = SafeForm.forCaseClass[Account].withDefaults(DefaultsWithRefined)
     val values = Map(
       "name" -> Seq(""),
       "numUsers" -> Seq("-1"),

@@ -16,8 +16,7 @@ private[formless] class CaseClassSafeForm[T] extends RecordArgs {
     align: Align[MO, L],
     align2: Align[L, MO]
   ): SafeForm[MO, T] = {
-    val premapping = mkMapping.apply(mappings)
-    SafeForm(premapping, Map(), Seq(), None)
+    SafeForm(mkMapping(mappings), Map(), Seq(), None)
   }
 
   def withDefaults[L <: HList, HF <: Poly, HFL <: HList, HFLO <: HList](defaults: HF)
@@ -46,8 +45,8 @@ private[formless] class CaseClassSafeForm[T] extends RecordArgs {
       align: Align[MHFRO, L],
       align2: Align[L, MHFRO]
     ): SafeForm[MHFRO, T] = {
-      val mapped = mappedR.apply
-      val unioned = union.apply(mappings, mapped)
+      val mapped = mappedR()
+      val unioned = union(mappings, mapped)
       withMappingsRecord(unioned)
     }
   }
@@ -58,18 +57,16 @@ private[formless] class CaseClassSafeForm[T] extends RecordArgs {
  * Variant of MapValues that doesn't require any values. Instead HF is assumed to rely on the
  * type only.
  */
-trait MapValuesNull[HF, L <: HList] extends Serializable { type Out <: HList; def apply: Out }
+trait MapValuesNull[HF, L <: HList] extends Serializable { type Out <: HList; def apply(): Out }
 
 object MapValuesNull {
-
-  def apply[HF, L <: HList](implicit mapValues: MapValuesNull[HF, L]): Aux[HF, L, mapValues.Out] = mapValues
 
   type Aux[HF, L <: HList, Out0 <: HList] = MapValuesNull[HF, L] { type Out = Out0 }
 
   implicit def hnilMapValues[HF, L <: HNil]: Aux[HF, L, HNil] =
     new MapValuesNull[HF, L] {
       type Out = HNil
-      def apply = HNil
+      def apply() = HNil
     }
 
   implicit def hconsMapValues[HF, K, V, T <: HList](implicit
@@ -78,7 +75,7 @@ object MapValuesNull {
   ): Aux[HF, FieldType[K, V] :: T, FieldType[K, hc.Result] :: mapValuesTail.Out] =
     new MapValuesNull[HF, FieldType[K, V] :: T] {
       type Out = FieldType[K, hc.Result] :: mapValuesTail.Out
-      def apply = field[K](hc(null.asInstanceOf[V])) :: mapValuesTail.apply
+      def apply() = field[K](hc(null.asInstanceOf[V])) :: mapValuesTail.apply
     }
 
 }
